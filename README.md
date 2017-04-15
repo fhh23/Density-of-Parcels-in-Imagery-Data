@@ -7,7 +7,7 @@
 3. [Data Exploration and Ingestion](README.md#3-data-exploration-and-ingestion)
 4. [Queries](README.md#4-queries)
 5. [Python Script](README.md#5-python-script)
-6. [Performance](README.md#6-performance)
+6. [Results and Further Considerations](README.md#6-results-and-further-considerations)
 
 
 
@@ -18,6 +18,7 @@ Given imagery data in the form of a multi-level raster tile map, at a resolution
 * With respect to a set of tiles at any desired zoom level between 16 and 20
 * With respect to a human-readable map and associated boundaries of interest (e.g. political or metropolitan boundaries)
 
+At a high level, in order to solve this problem I did a spatial join between the geometries of parcels found in a certain map view and the geometry of the state of interest in that view. In order to speed up this spatial join, I created an index on the tile map system geometries.
 
 ## 2. Setup
 
@@ -150,7 +151,15 @@ Postgres results:
 
 A minimal python script was written just to connect to my local Postgres instance, make a query, and print the density as a result. With further time, this would allow for a user input of coordinates for the map view and state of interest, and functions to zoom in and out of the map (rather than enter new coordinates each time). Also, database login info would be moved to a configuration file.
 
-## 6. Further Considerations
+## 6. Results and Further Considerations
+
+At a high level, in order to solve this problem I did a spatial join between the geometries of parcels found in a certain map view and the geometry of the state of interest in that view. In order to speed up this spatial join, I created an index on the tile map system geometries.
+
+There are some areas of potential further improvement. 
+1. The ST_Intersection call between the map view bounding box and the state geometry is slow. Case statements to quickly resolve the case where the bounding box is completely within or completely outside the state could speed this up. 
+2. The state geometries are made up of many polygon. Creating a new table with the results of ST_Dump on these multipolygons could make finding the intersection with the map view bounding box faster.
+3. 
+
 
 * allow user to view multiple states
 * multipolygons in states geometries
