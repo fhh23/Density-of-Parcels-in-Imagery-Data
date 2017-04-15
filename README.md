@@ -102,8 +102,8 @@ Now that I have these 2 geometries, I find the intersection of them. This ensure
 ``` sql
 SELECT ST_Intersection(state.geom, box.geom) as geom
         FROM
-				(SELECT geom from public.states_500k where name like 'Missouri') as state,
-				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box
+		(SELECT geom from public.states_500k where name like 'Missouri') as state,
+		(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box
 ```
 
 Finally, I find where this new bounding box intersects the parcels. This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS (discussed in section 4.1). 
@@ -112,8 +112,8 @@ SELECT *
 FROM public.tiles as parcels, 
 	(SELECT ST_Intersection(state.geom, box.geom) as geom
         FROM
-				(SELECT geom from public.states_500k where name like 'Missouri') as state,
-				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
+		(SELECT geom from public.states_500k where name like 'Missouri') as state,
+		(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
 WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
 ```
 
@@ -123,8 +123,8 @@ SELECT COUNT(*)/AVG(boundary.area) as density
 FROM public.tiles as parcels, 
 	(SELECT ST_Intersection(state.geom, box.geom) as geom, ST_AREA(ST_Intersection(state.geom, box.geom)::geography)/1609.34^2  as area
         FROM
-				(SELECT geom from public.states_500k where name like 'Missouri') as state,
-				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
+		(SELECT geom from public.states_500k where name like 'Missouri') as state,
+		(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
 WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
 ```
 
