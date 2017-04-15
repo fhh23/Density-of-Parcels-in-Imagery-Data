@@ -44,27 +44,90 @@ Next, I was unsure of what the public census data was to be used for and so I im
 Since my data was already in QGIS, I used QGIS to import my data into Postgres [[3]]. So I had 2 tables in Postgres, one for the states geometries and one for the tile map system. In PostGIS, I ran a simple query to see what the columns and data looked like.
 
 States Table:
+```sql
+SELECT * FROM public.states_500k
+ORDER BY id ASC LIMIT 100
+```
 <img src="pics/States_Table_analyze.PNG" />
 
 Tiles Table:
+```sql
+SELECT * FROM public.states_500k
+ORDER BY id ASC LIMIT 100
+```
 <img src="pics/Tiles_Table_analyze.PNG" />
 
 I also wanted to take a closer look at the geometry columns for both tables, so I ran the query below. 
 
-<img src="pics/SRID.PNG" />
+
+```sql
+SELECT ST_SRID(tiles.geom), ST_SRID(states.geom)
+FROM public.tiles as tiles, public.states_500k as states
+LIMIT 1
+```
+<img src="pics/SRID_query.PNG" />
 
 What I found was that the spatial reference identifier for the two geometries was different. Since my initial intuition was that I would need to do a spatial join between these two geometries, I created a new geometry column in the tiles table with the tile geometry SRID converted.
 
+```sql
+ALTER TABLE public.tiles ADD COLUMN geom_conv geometry(Geometry, 4269);
+UPDATE public.tiles SET geom_conv = ST_TRANSFORM(geom, 4269);
+```
 <img src="pics/CREATE_COL_tiles.PNG" />
 
 ## 4. Queries
 
+Before I started implementing queries, I had to think about how I was going to test my query. More specifically, how was I going to know what area of the map the user was looking at so that I could find the parcel density in that area. I decided to make the following assumption: if the user was looking at a map at a certain zoom level (we will call this the map view), the coordinates of the map view boundary would be passed to my pipeline. In addition, the user would specify what state they are currently interested in finding the parcel density for (this handles the case where there are multiple states in the map view).
+
+So first I start with the query to generate a geometry from the user's map view. This was my initial approach:
+```sql
+SELECT ST_MakePolygon(ST_AddPoint(view.open_line, ST_StartPoint(view.open_line))) as user_geom
+FROM ( 
+  SELECT ST_GeomFromText('LINESTRING(-89.98 37.79, -89.8 37.79, -89.78 37.66, -89.96 37.66)', 4269) as open_line
+  ) as view
+```
+
+However, I found that if my coordinates (which I was manually entering) weren't perfect or if I had selected a linestring which crossed over multiple states, I ran into issues. After more research, I found the ST_MakeEnvelope function, which created a bounding box from coordinates.
+```sql
+SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom
+```
+
+Next I make a query to get the geometry of the state the user is interested in. Just as an example, I have assumed the user has chosen Missouri.
+```sql
+SELECT name, geom 
+FROM public.states_500k 
+WHERE name like 'Missouri'
+```
+
+Now that I have these 2 geometries, I find the intersection of them. This ensures that if the user's map view spans multiple states, the geometry is only restricted to the state of interest.
+``` sql
+SELECT ST_Intersection(state.geom, box.geom) as geom
+        FROM
+				(SELECT geom from public.states_500k where name like 'Missouri') as state,
+				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box
+```
+
+Finally, I find where this new bounding box intersects the parcels.
+```sql
+SELECT * 
+FROM public.tiles as parcels, 
+	(SELECT ST_Intersection(state.geom, box.geom) as geom
+        FROM
+				(SELECT geom from public.states_500k where name like 'Missouri') as state,
+				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
+WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
+```
+
+This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS. 
 
 
 ## 5. Python Script
 
 
 ## 6. Further Considerations
+
+* allow user to view multiple states
+* multipolygons in states geometries
 
 
 
