@@ -148,7 +148,7 @@ Postgres results:
 
 ## 5. Python Script
 
-A minimal python script was written just to connect to my local Postgres instance, make a query, and print the density as a result. With further time, this would allow for a user input of coordinates for the map view and state of interest, and functions to zoom in and out of the map (rather than enter new coordinates each time). 
+A minimal python script was written just to connect to my local Postgres instance, make a query, and print the density as a result. With further time, this would allow for a user input of coordinates for the map view and state of interest, and functions to zoom in and out of the map (rather than enter new coordinates each time). Also, database login info would be moved to a configuration file.
 
 ## 6. Further Considerations
 
