@@ -107,7 +107,7 @@ SELECT ST_Intersection(state.geom, box.geom) as geom
 				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box
 ```
 
-Finally, I find where this new bounding box intersects the parcels.
+Finally, I find where this new bounding box intersects the parcels. This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS. 
 ```sql
 SELECT * 
 FROM public.tiles as parcels, 
@@ -118,7 +118,18 @@ FROM public.tiles as parcels,
 WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
 ```
 
-This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS. 
+The below query is the complete one to return the density in parcels per square mile.
+```sql
+SELECT COUNT(*)/AVG(boundary.area) as density
+FROM public.tiles as parcels, 
+	(SELECT ST_Intersection(state.geom, box.geom) as geom, ST_AREA(ST_Intersection(state.geom, box.geom)::geography)/1609.34^2  as area
+        FROM
+				(SELECT geom from public.states_500k where name like 'Missouri') as state,
+				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box) as boundary
+WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
+```
+
+### 4.1 Validating Results
 
 
 ## 5. Python Script
