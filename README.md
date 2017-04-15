@@ -153,16 +153,15 @@ A minimal python script was written just to connect to my local Postgres instanc
 
 ## 6. Results and Further Considerations
 
-At a high level, in order to solve this problem I did a spatial join between the geometries of parcels found in a certain map view and the geometry of the state of interest in that view. In order to speed up this spatial join, I created an index on the tile map system geometries.
+In order to solve this problem I did a spatial join between the geometries of parcels found in a certain map view and the geometry of the state of interest in that view. In order to speed up this spatial join, I created an index on the tile map system geometries. An index helps because instead of looping through every element in the parcels table during a join sequentially, the query will instead loop through elements based on geometries that are next to each other. At a high level, in order to solve this problem I did a spatial join between the geometries of parcels found in a certain map view and the geometry of the state of interest in that view. In order to speed up this spatial join, I created an index on the tile map system geometries. A GiST (Generalized Search Trees) index was used, as this is a natural way of grouping map tiles with a 2D relation to each other.
 
 There are some areas of potential further improvement. 
 1. The ST_Intersection call between the map view bounding box and the state geometry is slow. Case statements to quickly resolve the case where the bounding box is completely within or completely outside the state could speed this up. 
-2. The state geometries are made up of many polygon. Creating a new table with the results of ST_Dump on these multipolygons could make finding the intersection with the map view bounding box faster.
+2. The state geometries are made up of many polygon. Creating a new table with the results of ST_Dump on these multipolygons could make finding the intersection with the map view bounding box faster. Making an index on this new table geometry could also speed up the spatial join with the parcels geometry.
 3. 
 
 
-* allow user to view multiple states
-* multipolygons in states geometries
+There are also considerations to consider when scaling this solution out to a distributed databse. First, tile and state data should be partitioned by geometry, so that geometries that are near each other are located on the same machine. Next, as the number of rows in the tables grows, the computational and memory cost of the indexes must be taken into account. This also includes parcels being added to the tiles table, as everytime this happends the index has to be recomputed.
 
 
 
