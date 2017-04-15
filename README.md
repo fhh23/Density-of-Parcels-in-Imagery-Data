@@ -21,15 +21,14 @@ Given imagery data in the form of a multi-level raster tile map, at a resolution
 
 ## 2. Setup
 
-Install Postgres and PostGIS package.
-Install QGIS.
-Install Python3
+I used the following tools:
+
+* Latest version of Postgres and PostGIS package.
+* Latest version of QGIS.
+* Python3
 
 
 ## 3. Data Exploration and Ingestion
-
-<img align="left" src="pics/stream_pipeline.JPG" />
-
 
 There are 3 different suggested souces of data to use. The first is publicly available shapefiles of state geometries [[1]]. The second is publicly available census data to use as proxies [[2]]. The third is a tile map system containing parcel information provided by Cape Analytics.
 
@@ -107,7 +106,7 @@ SELECT ST_Intersection(state.geom, box.geom) as geom
 				(SELECT ST_makeenvelope(-89.5282, 37.3087, -89.4805, 37.3585,4269) as geom) as box
 ```
 
-Finally, I find where this new bounding box intersects the parcels. This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS. 
+Finally, I find where this new bounding box intersects the parcels. This will return the total number of parcels in the bounding box area. This is important because this is what I used to validate my answer in QGIS (discussed in section 4.1). 
 ```sql
 SELECT * 
 FROM public.tiles as parcels, 
@@ -129,11 +128,27 @@ FROM public.tiles as parcels,
 WHERE ST_Intersects(parcels.geom_conv, boundary.geom)
 ```
 
+In order to speed up the query, an index was created in the tiles table for the converted geometry column. This allows for more efficient lookup when doing the spatial join.
+``` sql
+CREATE INDEX geom_idx ON public.tiles USING GIST (geom_conv);
+ANALYZE public.tiles;
+CLUSTER public.tiles USING geom_idx;
+ANALYZE public.tiles;
+```
+
 ### 4.1 Validating Results
 
+In order to validate the query's accuracy, I ran the spatial query in QGIS and ran the same query in Postgres (with the coordinates manually entered) and compared the parcel ids in the results. One of the queries which was done on the boundary of two states is shown below.
+
+QGIS results:
+<img src="pics/QGIS_query_results.PNG" />
+
+Postgres results:
+<img src="pics/Postgres_query_results.PNG" />
 
 ## 5. Python Script
 
+A minimal python script was written just to connect to my local Postgres instance, make a query, and print the density as a result. With further time, this would allow for a user input of coordinates for the map view and state of interest, and functions to zoom in and out of the map (rather than enter new coordinates each time). 
 
 ## 6. Further Considerations
 
